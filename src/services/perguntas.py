@@ -1,7 +1,7 @@
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from sqlalchemy import select
-from database import SessionLocal
-from models import Chunk, Document as DBDocument
+from services.database import SessionLocal
+from services.models import Chunk, Document as DBDocument
 
 
 EMBED_MODEL = "nomic-embed-text"

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from services.perguntas import recebe_pergunta
+from services.perguntas import responder
 
 # Inicia a aplicação
 app = FastAPI(
@@ -18,4 +18,8 @@ async def health():
 @app.post("/")
 async def get_pergunta(pergunta: str):
     
-    return recebe_pergunta(pergunta=pergunta)
+    resposta = responder(pergunta)
+
+    return {
+        "resposta": resposta
+    }
