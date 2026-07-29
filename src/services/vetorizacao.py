@@ -1,3 +1,4 @@
+import os
 import boto3
 from io import BytesIO
 from pypdf import PdfReader
@@ -6,11 +7,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from database import SessionLocal
 from models import Chunk, Document as DBDocument
+from dotenv import load_dotenv
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parents[2]
 
-S3_ENDPOINT_URL = "http://localhost:9222"
-AWS_ACCESS_KEY_ID = "admin"
-AWS_SECRET_ACCESS_KEY = "admin123456"
+load_dotenv(BASE_DIR / ".env")
+
+S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 EMBED_BATCH_SIZE = 50  # ajuste conforme necessidade/limite do seu Ollama
 
