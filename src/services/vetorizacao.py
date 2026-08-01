@@ -5,8 +5,8 @@ from pypdf import PdfReader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
-from database import SessionLocal
-from models import Chunk, Document as DBDocument
+from services.database import SessionLocal
+from services.models import Chunk, Document as DBDocument
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -94,7 +94,6 @@ def criar_vetores(chunks, batch_size: int = EMBED_BATCH_SIZE):
 
     return vetores
 
-
 def salvar_chunks(chunks, vetores, session):
     for indice, (chunk, vetor) in enumerate(zip(chunks, vetores)):
         registro = Chunk(
@@ -105,6 +104,19 @@ def salvar_chunks(chunks, vetores, session):
             embedding=vetor,
         )
         session.add(registro)
+
+
+def deletar_chunks(session):
+    """Deleta todos os chunks e documentos do banco de dados"""
+    try:
+        session.query(Chunk).delete()
+        session.query(DBDocument).delete()
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def main():
@@ -121,15 +133,14 @@ def main():
         documentos = carrega_documentos(s3_client=s3, bucket="documentos", session=session)
 
         chunks = criar_chunks(documentos=documentos)
-        print(f"{len(chunks)} chunks gerados")
 
         vetores = criar_vetores(chunks=chunks)
-        print(f"{len(vetores)} vetores gerados")
+
+        deletar_chunks(session=session)  # limpa antes de salvar novos
 
         salvar_chunks(chunks=chunks, vetores=vetores, session=session)
 
         session.commit()
-        print("Commit realizado com sucesso.")
 
     except Exception:
         session.rollback()

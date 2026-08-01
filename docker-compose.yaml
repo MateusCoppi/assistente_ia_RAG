@@ -5,7 +5,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
-      - /volumes/minio:/data
+      - minio_data:/data
     ports:
       - "9222:9000"
       - "9223:9001"
@@ -22,4 +22,23 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - /volumes/postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_web
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123456
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+
+volumes:
+  minio_data:
+  postgres_data:
+  pgadmin_data:
