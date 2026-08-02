@@ -48,3 +48,30 @@ def autenticar_usuario(email):
         return False
 
     return user
+
+
+def login(email, password):
+    """Faz o login do usuário"""
+    user = autenticar_usuario(email)
+
+    if not user:
+        return {
+            "mensagem": "Usuário não encontrado"
+        }
+
+    if not verify_password(password, user.hashed_password):
+        return {
+            "mensagem": "Senha incorreta"
+        }
+
+    return {
+        "mensagem": "Login realizado com sucesso"
+    }
+
+
+def verify_password(plain_password, hashed_password):
+    """Verifica se a senha está correta"""
+    from passlib.context import CryptContext
+
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    return pwd_context.verify(plain_password, hashed_password)

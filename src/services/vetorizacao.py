@@ -126,7 +126,7 @@ def main(email: str):
 
     try:
 
-        deletar_chunks(session=session)  # limpa antes de salvar novos
+        # deletar_chunks(session=session)  # limpa antes de salvar novos
 
         documentos = carrega_documentos(s3_client=s3, email=email, session=session)
 
