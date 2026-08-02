@@ -35,6 +35,9 @@ class Document(Base):
         default=uuid.uuid4,
     )
 
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id")
+    )
     filename: Mapped[str]
     bucket: Mapped[str]
     object_key: Mapped[str]

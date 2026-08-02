@@ -6,17 +6,9 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from services.database import SessionLocal
-from services.models import Chunk, Document as DBDocument
-from dotenv import load_dotenv
-from pathlib import Path
+from services.models import Chunk, Document as DBDocument, User
+from services.s3_connection import get_s3_client
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-load_dotenv(BASE_DIR / ".env")
-
-S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 EMBED_BATCH_SIZE = 50  # ajuste conforme necessidade/limite do seu Ollama
 
@@ -30,13 +22,17 @@ def listar_objetos(s3_client, bucket: str):
     return objetos
 
 
-def carrega_documentos(s3_client, bucket: str, session) -> list:
+def carrega_documentos(s3_client, email: str, session) -> list:
     """
     Lê os PDFs do MinIO, cria 1 DBDocument por arquivo e retorna
     a lista de langchain Documents (1 por página), já com document_id
     no metadata para linkar os chunks depois
     """
     documentos = []
+
+    bucket = session.query(User).filter(User.email == email).first().username
+
+    user_id = session.query(User).filter(User.email == email).first().id
 
     for obj in listar_objetos(s3_client, bucket):
 
@@ -49,6 +45,7 @@ def carrega_documentos(s3_client, bucket: str, session) -> list:
             filename=obj["Key"],
             bucket=bucket,
             object_key=obj["Key"],
+            user_id=user_id
         )
         session.add(documento_db)
         session.flush()  # gera o ID sem commitar ainda
@@ -67,6 +64,7 @@ def carrega_documentos(s3_client, bucket: str, session) -> list:
                         "bucket": bucket,
                         "page": page_number,
                         "document_id": documento_db.id,
+                        "user_id": user_id,
                     },
                 )
             )
@@ -94,6 +92,7 @@ def criar_vetores(chunks, batch_size: int = EMBED_BATCH_SIZE):
 
     return vetores
 
+
 def salvar_chunks(chunks, vetores, session):
     for indice, (chunk, vetor) in enumerate(zip(chunks, vetores)):
         registro = Chunk(
@@ -119,24 +118,21 @@ def deletar_chunks(session):
         session.close()
 
 
-def main():
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=S3_ENDPOINT_URL,
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
+def main(email: str):
+
+    s3 = get_s3_client()
 
     session = SessionLocal()
 
     try:
-        documentos = carrega_documentos(s3_client=s3, bucket="documentos", session=session)
+
+        deletar_chunks(session=session)  # limpa antes de salvar novos
+
+        documentos = carrega_documentos(s3_client=s3, email=email, session=session)
 
         chunks = criar_chunks(documentos=documentos)
 
         vetores = criar_vetores(chunks=chunks)
-
-        deletar_chunks(session=session)  # limpa antes de salvar novos
 
         salvar_chunks(chunks=chunks, vetores=vetores, session=session)
 

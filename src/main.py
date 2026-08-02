@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from services.perguntas import responder
 from services.auth import cria_usuario
 from services.auth import autenticar_usuario
 from services.vetorizacao import main
+from services.carrega_arquivos import upload_arquivos
 
 # Inicia a aplicação
 app = FastAPI(
@@ -35,11 +36,12 @@ async def autenticar_usuario(email: str):
         "mensagem": "Usuário autenticado com sucesso" if user else "Usuário não encontrado",
     }
 
+
 # Perguntas para a LLM
 @app.post("/prompt")
-async def get_pergunta(pergunta: str):
+async def get_pergunta(pergunta: str, email: str):
     
-    resposta = responder(pergunta)
+    resposta = responder(pergunta, email)
 
     return {
         "resposta": resposta
@@ -48,9 +50,9 @@ async def get_pergunta(pergunta: str):
 
 # Treinamento do modelo
 @app.post("/treinamento_modelo")
-async def treina_modelo():
+async def treina_modelo(email: str):
     
-    main()
+    main(email=email)
 
     return {
         "resposta": "Modelo treinado"
@@ -66,3 +68,11 @@ async def cria_database():
     return {
         "resposta": "Database criada"
     }
+
+
+@app.post("/carrega_arquivos")
+async def carrega_arquivos(arquivo: UploadFile, email: str):
+
+    resposta = upload_arquivos(arquivo=arquivo, email=email)
+
+    return resposta

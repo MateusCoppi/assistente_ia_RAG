@@ -1,7 +1,7 @@
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from sqlalchemy import select
 from services.database import SessionLocal
-from services.models import Chunk, Document as DBDocument
+from services.models import Chunk, Document as DBDocument, User
 
 
 EMBED_MODEL = "nomic-embed-text"
@@ -9,7 +9,7 @@ LLM_MODEL = "llama3"
 TOP_K = 5
 
 
-def buscar_chunks_relevantes(pergunta: str, session, top_k: int = TOP_K):
+def buscar_chunks_relevantes(pergunta: str, email: str, session, top_k: int = TOP_K):
     """
     Gera o embedding da pergunta e busca os chunks mais próximos
     no Postgres usando pgvector
@@ -21,6 +21,8 @@ def buscar_chunks_relevantes(pergunta: str, session, top_k: int = TOP_K):
     stmt = (
         select(Chunk, DBDocument.filename)
         .join(DBDocument, Chunk.document_id == DBDocument.id)
+        .join(User, DBDocument.user_id == User.id)
+        .where(User.email == email)
         .order_by(Chunk.embedding.cosine_distance(vetor_pergunta))
         .limit(top_k)
     )
@@ -50,11 +52,11 @@ def montar_prompt(pergunta: str, resultados) -> str:
     return prompt
 
 
-def responder(pergunta: str) -> str:
+def responder(pergunta: str, email: str) -> str:
     session = SessionLocal()
 
     try:
-        resultados = buscar_chunks_relevantes(pergunta, session)
+        resultados = buscar_chunks_relevantes(pergunta, email, session)
 
         if not resultados:
             return "Não encontrei nenhum documento relevante para essa pergunta."
